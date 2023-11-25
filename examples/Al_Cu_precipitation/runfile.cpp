@@ -17,33 +17,39 @@ int main(int argc, char* argv[]) {
 		simulation.init_Modules(settings());
 		simulation.init_SimulationMesh();
 		pf::Set_Disperse& set = simulation.information.settings.disperse_settings;
+
+		simulation.nucleations.nucleation(0);
+
+		simulation.relaxation_interface(2000, 200, false, true, true);
+
+		simulation.fill_phase_con_with_value(0, 0, materials::Al, 0.8);
+		simulation.fill_phase_con_with_value(0, 0, materials::Cu, 0.2);
+		simulation.fill_phase_con_with_value(0, 1, materials::Al, 0.7);
+		simulation.fill_phase_con_with_value(0, 1, materials::Cu, 0.3);
+
 		simulation.output_before_loop();
+		vector<Matrix6x6> vec_M6x6;
+		vec_M6x6.push_back(simulation.information.materialSystem.phases[DATABASE::SYS_AL_CU::PHASES::FCC_A1].elastic_constants);
+		vec_M6x6.push_back(simulation.information.materialSystem.phases[DATABASE::SYS_AL_CU::PHASES::ALCU_THETA].elastic_constants);
+		simulation.mechanics.SetMAXElasticConstants(vec_M6x6);
 		for (int istep = set.begin_step; istep <= set.end_step; istep++) {
 			simulation.information.dynamicCollection.init_each_timeStep(istep, set.dt);
-
-			simulation.nucleations.nucleation(istep);
-
-			simulation.relaxation_interface(2000, 200, false);
-			simulation.fill_phase_con_with_value(0, 0, materials::Al, 0.8);
-			simulation.fill_phase_con_with_value(0, 0, materials::Cu, 0.2);
-			simulation.fill_phase_con_with_value(0, 1, materials::Al, 0.7);
-			simulation.fill_phase_con_with_value(0, 1, materials::Cu, 0.3);
 
 			simulation.init_mesh_data(istep);
 
 			simulation.mechanics.SetEffectiveEigenStrains();
 			simulation.mechanics.SetEffectiveElasticConstants();
-			simulation.mechanics.Solve(1e-3, 1e2, 1000, true);
+			simulation.mechanics.Solve(1e-5, 1e2, 1000, true);
 
 			simulation.prepare_physical_parameters_in_mesh(istep);
-
+			
 			simulation.evolve_phase_evolution_equation(istep, true);
 
 			simulation.evolve_phase_concentration_evolution_equation(istep);
 
-			simulation.phaseFraction_assignment_and_prepare_cFlag(istep);
+			simulation.phaseFraction_assignment_and_prepare_cFlag(istep, true);
 
-			simulation.phaseConcentration_assignment_with_cFlag(istep);
+			simulation.phaseConcentration_assignment_with_cFlag(istep, true);
 
 			simulation.output_in_loop(istep);
 
@@ -51,11 +57,12 @@ int main(int argc, char* argv[]) {
 		}
 		simulation.output_after_loop();
 		simulation.exit_MPF();
+
 	}
 }
 pf::Information settings() {
 	pf::Information inf;
-	// 数值离散时空
+	// -
 	inf.settings.disperse_settings.Nx = 50;
 	inf.settings.disperse_settings.Ny = 50;
 	inf.settings.disperse_settings.Nz = 1;
@@ -64,11 +71,12 @@ pf::Information settings() {
 	inf.settings.disperse_settings.dt = 1e-3;
 	inf.settings.disperse_settings.begin_step = 0;
 	inf.settings.disperse_settings.end_step = 0;
-	// 其他功能
+	// -
 	inf.settings.details_settings.con_average_range = 2;
 	inf.settings.details_settings.flux_model = PhaseFluxModel::IntDiff_ConGrad;
 	inf.settings.details_settings.flux_error_balance_coefficient = 0.8;
-	// 文件输入输出
+	inf.settings.details_settings.OMP_thread_counts = 10;
+	// -
 	inf.settings.file_settings.isDrivingForceOutput = true;
 	inf.settings.file_settings.isInterfaceEnergyOutput = true;
 	inf.settings.file_settings.isMechanicalFieldOutput = true;
@@ -76,7 +84,7 @@ pf::Information settings() {
 	inf.settings.file_settings.working_folder_path = CPP_FILE_PATH + "data";
 	inf.settings.file_settings.screen_output_step = 1000;
 	inf.settings.file_settings.file_output_step = 1000;
-	// 材料体系定义
+	// -
 	inf.materialSystem.phases.add_Phase(DATABASE::SYS_AL_CU::Get_Phase_Structure(DATABASE::SYS_AL_CU::PHASES::FCC_A1));
 	inf.materialSystem.phases.add_Phase(DATABASE::SYS_AL_CU::Get_Phase_Structure(DATABASE::SYS_AL_CU::PHASES::ALCU_THETA));
 	inf.materialSystem.sys_x.add_nodeEntry(materials::Al, "Al");
@@ -100,7 +108,7 @@ pf::Information settings() {
 	inf.materialSystem.functions.Xi_ab = DATABASE::SYS_AL_CU::xi_AB;
 	inf.materialSystem.functions.Mobility = DATABASE::SYS_AL_CU::mobility;
 	inf.materialSystem.functions.EffectiveEigenStrains = DATABASE::SYS_AL_CU::EffectivePhaseEigenStrains;
-	// 形核定义
+	// -
 	pf::GeometricRegion geo;
 	geo.init(Geometry::Geo_Ellipsoid, 0, 1, DATABASE::SYS_AL_CU::PHASES::ALCU_THETA, 500 + 273.0);
 	geo.x.add_x(materials::Al, 0.8);

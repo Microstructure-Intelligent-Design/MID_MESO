@@ -19,6 +19,9 @@ int main(int argc, char* argv[])  {
 
 		simulation.output_before_loop();
 		double iterate_rate = 1e-10;
+		vector<Matrix6x6> vec_M6x6;
+		vec_M6x6.push_back(simulation.information.materialSystem.phases[DATABASE::SYS_TIC_ZRC::PHASES::FCC_A1].elastic_constants);
+		simulation.mechanics.SetMAXElasticConstants(vec_M6x6);
 		for (int istep = set.begin_step; istep <= set.end_step; istep++) {
 			simulation.information.dynamicCollection.init_each_timeStep(istep, set.dt);
 
@@ -33,9 +36,7 @@ int main(int argc, char* argv[])  {
 
 			simulation.mechanics.SetEffectiveEigenStrains();
 			simulation.mechanics.SetEffectiveElasticConstants();
-			if (istep == set.begin_step)
-				simulation.mechanics.initVirtualEigenstrain();
-			iterate_rate = simulation.mechanics.Solve2(istep, 1.0e-5, 1000, iterate_rate, false);
+			iterate_rate = simulation.mechanics.Solve(1.0e-5, 100, 1000, false);
 
 			simulation.prepare_physical_parameters_in_mesh(istep);
 
@@ -69,7 +70,7 @@ pf::Information settings() {
 	inf.settings.details_settings.difference_method = DifferenceMethod::NINE_POINT;
 	inf.settings.details_settings.flux_model = PhaseFluxModel::IntDiff_PotentialGrad;
 	inf.settings.details_settings.con_incre_limit = 1e-3;
-	inf.settings.details_settings.OMP_thread_counts = 1;
+	inf.settings.details_settings.OMP_thread_counts = 10;
 
 	// 文件输入输出
 	inf.settings.file_settings.isMechanicalFieldOutput = true;

@@ -59,7 +59,9 @@ int main(int argc, char* argv[]) {
 		allenCahn.set_dF_dphi_func(dF_dphi_cal);
 		allenCahn.set_L_func(L_cal);
 		int output_step = 100;
+		simulation.information.settings.file_settings.screen_output_step = output_step;
 		simulation.information.settings.file_settings.file_output_step = output_step;
+		simulation.information.settings.file_settings.isCustomValueOutput = true;
 		for (int index = cahnHilliard.comps_start_index; index < cahnHilliard.comps_start_index + comps_number; index++)
 			simulation.information.settings.file_settings.customValue_output.add_string(index, "comp" + to_string(index - cahnHilliard.comps_start_index));
 		simulation.information.settings.file_settings.customValue_output.add_string(0, "grains");
@@ -76,11 +78,12 @@ int main(int argc, char* argv[]) {
 			max_variation2 = allenCahn.solve_one_step(istep, simulation.information.settings.disperse_settings.dt, true);
 			// data output
 			if (istep % output_step == 0) {
+				cout << "> cahnHilliard = " << max_variation << ", allenCahn = " << max_variation2 << endl;
 				for (auto node = simulation.phaseMesh._mesh.begin(); node < simulation.phaseMesh._mesh.end(); node++)
 					for (int index = 0; index < grains_number; index++)
 						node->customValues[0] += node->customValues[index + pf::SOLVER_ALLEN_CAHN] * node->customValues[index + pf::SOLVER_ALLEN_CAHN];
 			}
-
+			simulation.output_in_loop(istep);
 		}
 		simulation.output_after_loop();
 		simulation.exit_MPF();
@@ -99,6 +102,7 @@ pf::Information settings() {
 	inf.settings.disperse_settings.dx = 0.5;
 	// 文件输入输出
 	inf.settings.file_settings.working_folder_path = CPP_FILE_PATH + "data";
+	inf.settings.details_settings.OMP_thread_counts = 10;
 	// 细节
 	// 材料体系定义
 	inf.materialSystem.phases.add_Phase(0, "back_ground");

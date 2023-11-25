@@ -58,11 +58,12 @@ pf::Information settings() {
 	inf.settings.details_settings.int_grad = Int_Gradient::Int_GCustom;
 	inf.settings.details_settings.int_pot = Int_Potential::Int_PCustom;
 	inf.settings.details_settings.difference_method = DifferenceMethod::NINE_POINT;
+	inf.settings.details_settings.OMP_thread_counts = 10;
 	// 文件输入输出
 	inf.settings.file_settings.working_folder_path = CPP_FILE_PATH + "data";
-	inf.settings.file_settings.screen_output_step = 50;
-	inf.settings.file_settings.file_output_step = 50;
-	inf.settings.file_settings.dataFile_output_step = 50;
+	inf.settings.file_settings.screen_output_step = 100;
+	inf.settings.file_settings.file_output_step = 100;
+	inf.settings.file_settings.dataFile_output_step = 100;
 	inf.settings.file_settings.isTemperatureOutput = true;
 	// 材料体系定义
 	inf.materialSystem.init_temperature = 0.0;

@@ -96,6 +96,7 @@ pf::Information settings() {
 	inf.settings.file_settings.screen_output_step = 100;
 	inf.settings.file_settings.isFluidFieldOutput = true;
 	inf.settings.file_settings.working_folder_path = CPP_FILE_PATH + "data";
+	inf.settings.details_settings.OMP_thread_counts = 10;
 
 	// 材料体系定义
 	inf.materialSystem.is_fluid_on = true;

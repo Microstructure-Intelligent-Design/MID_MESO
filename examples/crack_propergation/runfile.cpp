@@ -8,6 +8,7 @@ using namespace std;
 #define CPP_FILE_PATH string("")
 #endif;
 void settings();
+static pf::Matrix6x6 phase_elastic_constance(int phase_property);
 pf::Information information;
 int main(int argc, char* argv[]) {
 	settings();
@@ -19,18 +20,32 @@ int main(int argc, char* argv[]) {
 		simulation.init_SimulationMesh();
 		pf::Set_Disperse& set = simulation.information.settings.disperse_settings;
 
-		simulation.output_before_loop();
-		for (int istep = set.begin_step; istep <= set.end_step; istep++) {
+		simulation.nucleations.nucleation(0);
+
+		// relax interface
+		for (int istep = 0; istep <= 5000; istep++) {
 			simulation.information.dynamicCollection.init_each_timeStep(istep, set.dt);
 
-			//simulation.nucleations.nucleation(istep);
+			simulation.init_mesh_data(istep);
+
+			simulation.prepare_physical_parameters_in_mesh(istep);
+
+			simulation.evolve_phase_evolution_equation(istep, true);
+
+			simulation.phaseFraction_assignment(istep, false);
+		}
+
+		simulation.output_before_loop();
+		vector<Matrix6x6> vec_M6x6;
+		vec_M6x6.push_back(phase_elastic_constance(0));
+		simulation.mechanics.SetMAXElasticConstants(vec_M6x6);
+		for (int istep = set.begin_step; istep <= set.end_step; istep++) {
+			simulation.information.dynamicCollection.init_each_timeStep(istep, set.dt);
 
 			simulation.init_mesh_data(istep);
 
 			simulation.mechanics.SetEffectiveElasticConstants();
-			//simulation.mechanics.initVirtualEigenstrain();
-			//simulation.mechanics.Solve2(1e-4, 10000, 1e-12, false);
-			simulation.mechanics.Solve(3e-5, 1e7, 10000, false);
+			simulation.mechanics.Solve(1e-5, 1e7, 10000, false);
 
 			simulation.prepare_physical_parameters_in_mesh(istep);
 
@@ -213,7 +228,7 @@ void settings() {
 	//-----------------------------------------------------------------------
 	// 数值离散时空
 	information.settings.disperse_settings.begin_step = 0;
-	information.settings.disperse_settings.end_step = 0;
+	information.settings.disperse_settings.end_step = 10000;
 	information.settings.disperse_settings.int_width = 1.0 * 1e-6;  // for crack interface
 	information.settings.disperse_settings.Nx = 50;
 	information.settings.disperse_settings.Ny = 50;
@@ -228,6 +243,7 @@ void settings() {
 	information.settings.details_settings.phi_incre_limit = 1e-3;
 	information.settings.details_settings.difference_method = DifferenceMethod::FIVE_POINT;
 	information.settings.details_settings.phases_grow_shringk_type = PHASES_GROW_SHRINK_TYPE::HALF_INT;
+	information.settings.details_settings.OMP_thread_counts = 10;
 	//-----------------------------------------------------------------------
 	// 文件输入 输出
 	information.settings.file_settings.NaN = 0.0;
@@ -239,9 +255,6 @@ void settings() {
 	information.settings.file_settings.isDrivingForceOutput = true;
 	//-----------------------------------------------------------------------
 	information.settings.file_settings.working_folder_path = CPP_FILE_PATH + "data";
-	information.settings.file_settings.is_init_byDatafile = true;
-	information.settings.file_settings.is_Datafile_init_by_path = true;
-	information.settings.file_settings.restart_datafile_path = CPP_FILE_PATH + "DATA_init_crack_grow.dat";
 	information.settings.file_settings.file_output_step = 500;
 	information.settings.file_settings.screen_output_step = 500;
 	information.settings.file_settings.is_write_datafile = true;
@@ -253,7 +266,7 @@ void settings() {
 	information.materialSystem.mechanics.rotation_gauge = RotationGauge::RG_XYX;
 	information.materialSystem.mechanics.y_bc = BoundaryCondition::ADIABATIC;
 	information.materialSystem.mechanics.appStrainMask[0] = true;
-	information.materialSystem.mechanics.effectiveAppliedStrain[0] = 3e-4;
+	information.materialSystem.mechanics.effectiveAppliedStrain[0] = 5e-4;
 	double radian[] = {AngleToRadians(0.0), AngleToRadians(0.0), AngleToRadians(0.0)};
 	information.materialSystem.mechanics.grainRotation.add_matrix3(0, RotationMatrix::rotationMatrix_XYX(radian));
 	information.materialSystem.mechanics.grainRotation.add_matrix3(1, RotationMatrix::rotationMatrix_XYX(radian));
@@ -267,7 +280,7 @@ void settings() {
 	information.materialSystem.functions.dfint_dphi = dfint_dphi;
 	information.materialSystem.functions.Energy = energy;
 	information.materialSystem.functions.Mobility = mobility;
-	//information.materialSystem.functions.Interpolation_function_for_driving_force = interpolation_function_for_driving_force;
+	information.materialSystem.functions.Interpolation_function_for_driving_force = interpolation_function_for_driving_force;
 	information.materialSystem.functions.EffectiveElasticConstants = EffectiveElasticConstants;
 	//-----------------------------------------------------------------------
 	// 形核定义

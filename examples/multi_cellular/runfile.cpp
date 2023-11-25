@@ -98,6 +98,7 @@ int main(int argc, char* argv[]) {
 		simulation.information.settings.file_settings.customValue_output.add_string(0, "cells");
 		int output_step = 50;
 		simulation.information.settings.file_settings.file_output_step = output_step;
+		simulation.information.settings.file_settings.screen_output_step = output_step;
 		// define a solver
 		simulation.output_before_loop();
 		for (int istep = set.begin_step; istep <= set.end_step; istep++) {
@@ -123,6 +124,7 @@ int main(int argc, char* argv[]) {
 							node->customValues[0] += node->customValues[grain + pf::SOLVER_ALLEN_CAHN];
 						}
 			}
+			simulation.output_in_loop(istep);
 		}
 		simulation.output_after_loop();
 		simulation.exit_MPF();
@@ -139,6 +141,7 @@ pf::Information settings() {
 	inf.settings.disperse_settings.Nz = 1;
 	inf.settings.disperse_settings.dt = 5e-3;
 	inf.settings.disperse_settings.dx = 1.0;
+	inf.settings.details_settings.OMP_thread_counts = 10;
 	// 文件输入输出
 	inf.settings.file_settings.working_folder_path = CPP_FILE_PATH + "data";
 	// 材料体系定义

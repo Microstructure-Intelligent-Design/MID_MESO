@@ -17,11 +17,29 @@ int main(int argc, char* argv[]) {
 		simulation.init_SimulationMesh();
 		pf::Set_Disperse& set = simulation.information.settings.disperse_settings;
 
+		simulation.nucleations.nucleation(0);
+
+		// relax interface
+		for (int istep = 0; istep <= 5000; istep++) {
+			simulation.information.dynamicCollection.init_each_timeStep(istep, set.dt);
+
+			simulation.init_mesh_data(istep);
+
+			simulation.prepare_physical_parameters_in_mesh(istep);
+
+			simulation.evolve_phase_concentration_evolution_equation(istep);
+
+			simulation.phaseConcentration_assignment_with_cFlag(istep);
+
+			simulation.automatically_adjust_dt(istep, 500, 50, 100, 1e-2, true);
+		}
+		vector<Matrix6x6> vec_M6x6;
+		vec_M6x6.push_back(Get_PhaseElasticConstants(DATABASE::SYS_Elastic::PHASES::Matrix));
+		vec_M6x6.push_back(Get_PhaseElasticConstants(DATABASE::SYS_Elastic::PHASES::Precipitate));
+		simulation.mechanics.SetMAXElasticConstants(vec_M6x6);
 		simulation.output_before_loop();
 		for (int istep = set.begin_step; istep <= set.end_step; istep++) {
 			simulation.information.dynamicCollection.init_each_timeStep(istep, set.dt);
-
-			//simulation.nucleations.nucleation(istep);
 
 			simulation.init_mesh_data(istep);
 
@@ -39,7 +57,7 @@ int main(int argc, char* argv[]) {
 
 			simulation.data_file_write_in_loop(istep);
 
-			simulation.automatically_adjust_dt(istep, 500, 50, 100, 1e-2);
+			simulation.automatically_adjust_dt(istep, 500, 50, 100, 1e-2, true);
 		}
 		simulation.output_after_loop();
 		simulation.exit_MPF();
@@ -63,28 +81,25 @@ pf::Information settings() {
 	inf.settings.details_settings.difference_method = DifferenceMethod::NINE_POINT;
 	inf.settings.details_settings.flux_model = PhaseFluxModel::IntDiff_PotentialGrad;
 	inf.settings.details_settings.con_incre_limit = 1e-2;
-	inf.settings.details_settings.OMP_thread_counts = 1;
+	inf.settings.details_settings.OMP_thread_counts = 10;
 	// 文件输入输出
 	inf.settings.file_settings.working_folder_path = CPP_FILE_PATH + "data";
 	inf.settings.file_settings.isMechanicalFieldOutput = true;
 	inf.settings.file_settings.isChemicalPotentialDivisionOutput = true;
-	inf.settings.file_settings.is_init_byDatafile = true;
-	inf.settings.file_settings.is_Datafile_init_by_path = true;
-	inf.settings.file_settings.restart_datafile_path = CPP_FILE_PATH + "DATA_init.dat";
 	inf.settings.file_settings.screen_output_step = 200;
 	inf.settings.file_settings.file_output_step = 500;
 	//inf.settings.file_settings.phases_mark;		// 标记输出，标记特殊相
 	// 材料体系定义
-	inf.materialSystem.mechanics.effectiveElasticConstantsModel = EffectiveElasticConstantsModel::EEC_Custom;
 	inf.materialSystem.phases.add_Phase(DATABASE::SYS_Elastic::Get_Phase_Structure(DATABASE::SYS_Elastic::PHASES::Matrix));
 	inf.materialSystem.matrix_phase.set(0, DATABASE::SYS_Elastic::PHASES::Matrix);
 	inf.materialSystem.matrix_phase.x.add_con(DATABASE::SYS_Elastic::CON, 0.0);
 	inf.materialSystem.sys_x.add_nodeEntry(DATABASE::SYS_Elastic::CON, "CON");
 
 	inf.materialSystem.is_mechanics_on = true;
+	inf.materialSystem.mechanics.effectiveElasticConstantsModel = EffectiveElasticConstantsModel::EEC_Custom;
 	inf.materialSystem.mechanics.rotation_gauge = RotationGauge::RG_ZXZ;
-	inf.materialSystem.mechanics.loadStressMask[0] = true;
-	inf.materialSystem.mechanics.effectiveAppliedStress[0] = 4.0;
+	inf.materialSystem.mechanics.appStrainMask[0] = true;
+	inf.materialSystem.mechanics.effectiveAppliedStrain[0] = 1e-2;
 	Matrix3x3 matrix_rotate;
 	matrix_rotate.set_to_unity();
 	Matrix3x3 prec_rotate;
